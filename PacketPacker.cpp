@@ -4,6 +4,8 @@
 #include "stdafx.h"
 
 #include <stdlib.h>
+#include <memory.h>
+#include <string.h>
 
 #define MAX_NAME_LENGTH 16
 
@@ -136,11 +138,100 @@ bool NetSendPacket(NetPacket *packet){
 }
 
 
+NetPacket *NetCreatePacket(){
+	NetPacket *packet;
+	packet = (NetPacket*)malloc(sizeof(NetPacket));
+	memset(packet,0,sizeof(NetPacket));
+	return packet;
+}
+
+void NetDisposeData(NetPacketData *data){
+	free(data->data);
+	free(data);
+}
+void NetDisposePacket(NetPacket *packet,bool disposeData){
+
+	if(disposeData == true){
+		for(int i=0;i<packet->header.count;i++)
+			NetDisposeData(&packet->data[i]);
+	}
+	free(packet);
+}
+
+void NetAddData(NetPacket *packet,NetPacketData *data){
+	packet->data = (NetPacketData*)realloc(packet->data,
+		sizeof(NetPacketData) * (packet->header.count + 1));
+
+	packet->data[packet->header.count] = *data;
+
+	packet->header.count ++;
+}
+NetPacketData *NetGetData(NetPacket *packet, const char *name){
+	NetPacketData *data = NULL;
+
+	for(int i=0;i<packet->header.count;i++){
+		if(!strcmp(packet->data[i].name, name)){
+			data = &packet->data[i];
+			break;
+		}
+	}
+
+	return data;
+}
+
+void NetAddNumberData(NetPacket *packet, const char *name, int i){
+	NetPacketData data;
+	data.size = sizeof(int);
+	data.data = (void*)i;
+	sprintf(data.name, name);
+	NetAddData(packet,&data);
+}
+void NetAddCharacterData(NetPacket *packet, const char *name, char c){
+	NetPacketData data;
+	data.size = sizeof(char);
+	data.data = (void*)c;
+	sprintf(data.name, name);
+	NetAddData(packet,&data);
+}
+void NetAddStringData(NetPacket *packet, const char *name, const char *msg){
+	NetPacketData data;
+	data.size = strlen(msg);
+	data.data = (void*)msg;
+	sprintf(data.name, name);
+	NetAddData(packet,&data);
+}
+
+int NetGetNumberData(NetPacket *packet, const char *name){
+	NetPacketData *data;
+	data = NetGetData(packet,name);
+	return (int)data->data;
+}
+char NetGetCharacterData(NetPacket *packet, const char *name){
+	NetPacketData *data;
+	data = NetGetData(packet,name);
+	return (char)data->data;
+}
+char *NetGetStringData(NetPacket *packet, const char *name){
+	NetPacketData *data;
+	data = NetGetData(packet,name);
+	return (char*)data->data;
+}
+
+
 
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	
+	NetPacket *p;
+
+	p = NetCreatePacket();
+
+	NetAddNumberData(p, "test", 123);
+
+	printf(" test is %d \n", NetGetNumberData(p, "test"));
+
+	//NetDisposePacket(p,true);
+
 	return 0;
 }
 
